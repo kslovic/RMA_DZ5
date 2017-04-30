@@ -18,15 +18,26 @@ import android.os.Bundle;
 import android.util.Log;
 import android.widget.TextView;
 
+import com.google.android.gms.maps.GoogleMap;
+import com.google.android.gms.maps.MapFragment;
+import com.google.android.gms.maps.OnMapReadyCallback;
+import com.google.android.gms.maps.UiSettings;
+import com.google.android.gms.maps.model.BitmapDescriptorFactory;
+import com.google.android.gms.maps.model.LatLng;
+import com.google.android.gms.maps.model.MarkerOptions;
+
 import java.io.IOException;
 import java.util.List;
 import java.util.Locale;
 
-public class MainActivity extends AppCompatActivity {
+public class MainActivity extends AppCompatActivity implements OnMapReadyCallback {
     private static final int REQUEST_LOCATION_PERMISSION = 10;
     LocationListener mLocationListener;
     LocationManager mLocationManager;
     TextView tvLocation;
+    GoogleMap mGoogleMap;
+    MapFragment mMapFragment;
+    private GoogleMap.OnMapClickListener mCustomOnMapClickListener;
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -69,6 +80,19 @@ public class MainActivity extends AppCompatActivity {
     }
     private void setUpUi() {
         this.tvLocation = (TextView) this.findViewById(R.id.tvLocation);
+        this.mMapFragment = (MapFragment) getFragmentManager().findFragmentById(R.id.fGoogleMap);
+        this.mMapFragment.getMapAsync(this);
+        this.mCustomOnMapClickListener = new GoogleMap.OnMapClickListener() {
+            @Override
+            public void onMapClick(LatLng latLng) {
+                MarkerOptions newMarkerOptions = new MarkerOptions();
+                newMarkerOptions.icon(BitmapDescriptorFactory.fromResource(R.mipmap.tujekristina));
+                newMarkerOptions.title("My place");
+                newMarkerOptions.snippet("I declare this my teritory!");
+                newMarkerOptions.position(latLng);
+                mGoogleMap.addMarker(newMarkerOptions);
+            }
+        };
     }
     private void updateLocationDisplay(Location location){
         String message =
@@ -151,6 +175,22 @@ public class MainActivity extends AppCompatActivity {
                 })
                 .show();
     }
+
+    @Override
+    public void onMapReady(GoogleMap googleMap) {
+        this.mGoogleMap = googleMap;
+        UiSettings uiSettings = this.mGoogleMap.getUiSettings();
+        uiSettings.setZoomControlsEnabled(true);
+        uiSettings.setMyLocationButtonEnabled(true);
+        uiSettings.setZoomGesturesEnabled(true);
+        this.mGoogleMap.setOnMapClickListener(this.mCustomOnMapClickListener);
+        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+// TODO: Consider calling ActivityCompat#requestPermissions
+            return;
+        }
+        this.mGoogleMap.setMyLocationEnabled(true);
+    }
+
     private class SimpleLocationListener implements LocationListener{
         @Override
         public void onLocationChanged(Location location) { updateLocationDisplay(location); }
