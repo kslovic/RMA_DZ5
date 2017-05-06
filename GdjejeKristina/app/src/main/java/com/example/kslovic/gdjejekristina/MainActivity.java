@@ -1,10 +1,14 @@
 package com.example.kslovic.gdjejekristina;
 
 import android.Manifest;
+import android.app.Notification;
+import android.app.NotificationManager;
+import android.app.PendingIntent;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
+import android.graphics.Color;
 import android.location.Address;
 import android.location.Criteria;
 import android.location.Geocoder;
@@ -12,12 +16,15 @@ import android.location.Location;
 import android.location.LocationListener;
 import android.location.LocationManager;
 import android.media.AudioManager;
+import android.media.RingtoneManager;
 import android.media.SoundPool;
+import android.net.Uri;
 import android.os.Build;
 import android.os.Environment;
 import android.provider.MediaStore;
 import android.support.annotation.NonNull;
 import android.support.v4.app.ActivityCompat;
+import android.support.v4.app.NotificationCompat;
 import android.support.v4.content.ContextCompat;
 import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AppCompatActivity;
@@ -300,7 +307,8 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                 Toast.makeText(this, "Image could not be saved.",
                         Toast.LENGTH_LONG).show();
             }
-
+            String filePath = "file:" + mediaStorageDir + "/" + photoFile;
+            sendNotification(file, filePath);
         }
     }
 
@@ -333,5 +341,25 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         }
     }
 
+    private void sendNotification(File file, String msgText) {
 
+        Intent intentPicture = new Intent(Intent.ACTION_VIEW, Uri.fromFile(file));
+        intentPicture.setDataAndType(Uri.fromFile(file), "image/*");
+        PendingIntent notificationPendingIntent = PendingIntent.getActivity(this, 0, intentPicture, PendingIntent.FLAG_UPDATE_CURRENT);
+
+        NotificationCompat.Builder notificationBuilder = new NotificationCompat.Builder(this);
+        notificationBuilder.setAutoCancel(true)
+                .setContentTitle("Spremljena je nova slika")
+                .setContentText(msgText)
+                .setSmallIcon(android.R.drawable.ic_dialog_email)
+                .setContentIntent(notificationPendingIntent)
+                .setLights(Color.BLUE, 2000, 1000)
+                .setVibrate(new long[]{1000, 1000, 1000, 1000, 1000})
+                .setSound(RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION));
+        Notification notification = notificationBuilder.build();
+        NotificationManager notificationManager =
+                (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
+        notificationManager.notify(0, notification);
+        this.finish();
+    }
 }
