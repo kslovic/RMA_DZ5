@@ -1,4 +1,5 @@
 <resources>
     <string name="app_name">Gdje je Kristina?</string>
     <string name="tvLocationText">Unknown</string>
+    <string name="takePhoto">SNIMI FOTOGRAFIJU</string>
 </resources>
