@@ -41,6 +41,7 @@ import com.google.android.gms.maps.OnMapReadyCallback;
 import com.google.android.gms.maps.UiSettings;
 import com.google.android.gms.maps.model.BitmapDescriptorFactory;
 import com.google.android.gms.maps.model.LatLng;
+import com.google.android.gms.maps.model.Marker;
 import com.google.android.gms.maps.model.MarkerOptions;
 
 import java.io.File;
@@ -53,17 +54,20 @@ import java.util.Locale;
 public class MainActivity extends AppCompatActivity implements OnMapReadyCallback, View.OnClickListener {
     private static final int REQUEST_LOCATION_PERMISSION = 10;
     private static final int REQUEST_WRITE_STORAGE = 1;
+    private static final int REQUEST_CAMERA= 100;
     LocationListener mLocationListener;
     LocationManager mLocationManager;
     TextView tvLocation;
     GoogleMap mGoogleMap;
     MapFragment mMapFragment;
+    Marker marker =null;
     SoundPool mSoundPool;
     boolean mLoaded = false;
     HashMap<Integer, Integer> mSoundMap = new HashMap<>();
     private GoogleMap.OnMapClickListener mCustomOnMapClickListener;
     Button bCamera;
     private String fileName = "unknown";
+    Bitmap bitmap;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -76,7 +80,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
     @Override
     protected void onStart() {
         super.onStart();
-        if (hasLocationPermission() == false) {
+        if (!hasLocationPermission()) {
             requestPermission();
         }
 
@@ -122,8 +126,8 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
             public void onMapClick(LatLng latLng) {
                 MarkerOptions newMarkerOptions = new MarkerOptions();
                 newMarkerOptions.icon(BitmapDescriptorFactory.fromResource(R.mipmap.tujekristina));
-                newMarkerOptions.title("My place");
-                newMarkerOptions.snippet("I declare this my teritory!");
+                newMarkerOptions.title("Ovdje sam");
+                newMarkerOptions.snippet("Konačno znam gdje se nalazim!");
                 newMarkerOptions.position(latLng);
                 mGoogleMap.addMarker(newMarkerOptions);
                 if (mLoaded == false) return;
@@ -197,6 +201,8 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
     @Override
     public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions,
                                            @NonNull int[] grantResults) {
+
+
         switch (requestCode) {
             case REQUEST_LOCATION_PERMISSION:
                 if (grantResults.length > 0) {
@@ -204,36 +210,79 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                         Log.d("Permission", "Permission granted. User pressed allow.");
                     } else {
                         Log.d("Permission", "Permission not granted. User pressed deny.");
-                        askForPermission();
+                        askForPermission(requestCode);
                     }
                 }
+                break;
+            case REQUEST_CAMERA:
+                if (grantResults.length > 0) {
+                    if (grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                        Log.d("Permission", "Permission granted. User pressed allow.");
+                        openCamera();
+                    } else {
+                        Log.d("Permission", "Permission not granted. User pressed deny.");
+                        askForPermission(requestCode);
+                    }
+                }
+                break;
             case REQUEST_WRITE_STORAGE:
                 if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
                     createDirectory();
-
+                    saveImage(bitmap);
                 } else {
+
                     Toast.makeText(this, "The app was not allowed to write to your storage. Hence, it cannot function properly. Please consider granting it this permission", Toast.LENGTH_LONG).show();
+                    askForPermission(requestCode);
                 }
+                break;
 
         }
     }
 
-    private void askForPermission() {
-        boolean shouldExplain = ActivityCompat.shouldShowRequestPermissionRationale(
-                MainActivity.this, Manifest.permission.ACCESS_FINE_LOCATION);
+    private void requestCameraPremission() {
+        ActivityCompat.requestPermissions(this,
+                new String[]{Manifest.permission.CAMERA},
+                REQUEST_CAMERA);
+    }
+
+    private void askForPermission(int requestCode) {
+        boolean shouldExplain = false;
+        switch (requestCode) {
+            case REQUEST_LOCATION_PERMISSION:
+                shouldExplain = ActivityCompat.shouldShowRequestPermissionRationale(MainActivity.this, Manifest.permission.ACCESS_FINE_LOCATION);
+                break;
+            case REQUEST_WRITE_STORAGE:
+                shouldExplain = ActivityCompat.shouldShowRequestPermissionRationale(MainActivity.this, Manifest.permission.WRITE_EXTERNAL_STORAGE);
+                break;
+            case REQUEST_CAMERA:
+                shouldExplain = ActivityCompat.shouldShowRequestPermissionRationale(MainActivity.this, Manifest.permission.CAMERA);
+                break;
+        }
         if (shouldExplain) {
             Log.d("Permission", "Permission should be explained, - don't show again not clicked.");
-            this.displayDialog();
+            this.displayDialog(requestCode);
         } else {
             Log.d("Permission", "Permission not granted. User pressed deny and don't show again.");
             tvLocation.setText("Sorry, we really need that permission");
         }
     }
 
-    private void displayDialog() {
+
+    private void displayDialog(final int requestCode) {
         AlertDialog.Builder dialogBuilder = new AlertDialog.Builder(this);
-        dialogBuilder.setTitle("Location permission")
-                .setMessage("We display your location and need your permission")
+        switch (requestCode) {
+            case REQUEST_LOCATION_PERMISSION:
+                dialogBuilder.setTitle("Location permission");
+                break;
+            case REQUEST_WRITE_STORAGE:
+                dialogBuilder.setTitle("Location permission");
+                break;
+            case REQUEST_CAMERA:
+                dialogBuilder.setTitle("Location permission");
+                break;
+        }
+
+        dialogBuilder.setMessage("We display your location and need your permission")
                 .setNegativeButton("Dismiss", new DialogInterface.OnClickListener() {
                     @Override
                     public void onClick(DialogInterface dialog, int which) {
@@ -245,7 +294,17 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                     @Override
                     public void onClick(DialogInterface dialog, int which) {
                         Log.d("Permission", "Permission requested because of the explanation.");
-                        requestPermission();
+                        switch (requestCode) {
+                            case REQUEST_LOCATION_PERMISSION:
+                                requestPermission();
+                                break;
+                            case REQUEST_WRITE_STORAGE:
+                                requestWritePremission();
+                                break;
+                            case REQUEST_CAMERA:
+                                requestCameraPremission();
+                                break;
+                        }
                         dialog.cancel();
                     }
                 })
@@ -260,56 +319,76 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         uiSettings.setMyLocationButtonEnabled(true);
         uiSettings.setZoomGesturesEnabled(true);
         this.mGoogleMap.setOnMapClickListener(this.mCustomOnMapClickListener);
-        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
-            return;
-        }
-        this.mGoogleMap.setMyLocationEnabled(true);
+
+
     }
 
     @Override
     public void onClick(View v) {
+        boolean hasCameraPermission = (ContextCompat.checkSelfPermission(this,
+                Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED);
+
+        if (!hasCameraPermission) {
+            requestCameraPremission();
+        } else {
+            openCamera();
+        }
+
+
+    }
+
+    private void openCamera() {
         Intent intent = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
         startActivityForResult(intent, 0);
-
     }
 
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         if (resultCode == RESULT_OK) {
             super.onActivityResult(requestCode, resultCode, data);
-            Bitmap bitmap = (Bitmap) data.getExtras().get("data");
+            bitmap = (Bitmap) data.getExtras().get("data");
             boolean hasPermission = (ContextCompat.checkSelfPermission(this,
                     Manifest.permission.WRITE_EXTERNAL_STORAGE) == PackageManager.PERMISSION_GRANTED);
 
             if (!hasPermission) {
-                ActivityCompat.requestPermissions(this,
-                        new String[]{Manifest.permission.WRITE_EXTERNAL_STORAGE},
-                        REQUEST_WRITE_STORAGE);
+                requestWritePremission();
             } else {
                 createDirectory();
+                saveImage(bitmap);
             }
-            String photoFile = fileName + ".jpg";
-            createDirectory();
-            File mediaStorageDir = createDirectory();
-            File file = new File(mediaStorageDir, photoFile);
-            int numImages = 0;
-            while (file.exists()) {
-                numImages++;
-                photoFile = fileName + String.valueOf(numImages) + ".jpg";
-                file = new File(mediaStorageDir, photoFile);
-            }
-            try {
-                FileOutputStream fos = new FileOutputStream(file);
-                bitmap.compress(Bitmap.CompressFormat.JPEG, 85, fos);
-                fos.close();
 
-            } catch (Exception error) {
-                Toast.makeText(this, "Image could not be saved.",
-                        Toast.LENGTH_LONG).show();
-            }
-            String filePath = "file:" + mediaStorageDir + "/" + photoFile;
-            sendNotification(file, filePath);
         }
+    }
+
+    private void requestWritePremission() {
+        ActivityCompat.requestPermissions(this,
+                new String[]{Manifest.permission.WRITE_EXTERNAL_STORAGE},
+                REQUEST_WRITE_STORAGE);
+
+    }
+
+    private void saveImage(Bitmap bitmap) {
+        String photoFile = fileName + ".jpg";
+        createDirectory();
+        File mediaStorageDir = createDirectory();
+        File file = new File(mediaStorageDir, photoFile);
+        int numImages = 0;
+        while (file.exists()) {
+            numImages++;
+            photoFile = fileName + String.valueOf(numImages) + ".jpg";
+            file = new File(mediaStorageDir, photoFile);
+        }
+        try {
+            FileOutputStream fos = new FileOutputStream(file);
+            bitmap.compress(Bitmap.CompressFormat.JPEG, 85, fos);
+            fos.close();
+
+        } catch (Exception error) {
+            Toast.makeText(this, "Image could not be saved.",
+                    Toast.LENGTH_LONG).show();
+        }
+        String filePath = "file:" + mediaStorageDir + "/" + photoFile;
+        sendNotification(file, filePath);
     }
 
     public File createDirectory() {
@@ -326,6 +405,18 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         @Override
         public void onLocationChanged(Location location) {
             updateLocationDisplay(location);
+            if(marker!=null) {
+                marker.remove();
+            }
+            LatLng latLng = new LatLng(location.getLatitude(), location.getLongitude());
+            MarkerOptions markerOptions = new MarkerOptions();
+            markerOptions.position(latLng);
+            markerOptions.title("Moja lokacija");
+            marker = mGoogleMap.addMarker(markerOptions);
+            if (ActivityCompat.checkSelfPermission(getApplicationContext(), Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
+                mGoogleMap.setMyLocationEnabled(true);
+            }
+
         }
 
         @Override
