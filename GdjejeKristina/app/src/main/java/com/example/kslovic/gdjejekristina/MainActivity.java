@@ -126,8 +126,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
             public void onMapClick(LatLng latLng) {
                 MarkerOptions newMarkerOptions = new MarkerOptions();
                 newMarkerOptions.icon(BitmapDescriptorFactory.fromResource(R.mipmap.tujekristina));
-                newMarkerOptions.title("Ovdje sam");
-                newMarkerOptions.snippet("Konačno znam gdje se nalazim!");
+                newMarkerOptions.title("Označena lokacija");
                 newMarkerOptions.position(latLng);
                 mGoogleMap.addMarker(newMarkerOptions);
                 if (mLoaded == false) return;
@@ -275,10 +274,10 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                 dialogBuilder.setTitle("Location permission");
                 break;
             case REQUEST_WRITE_STORAGE:
-                dialogBuilder.setTitle("Location permission");
+                dialogBuilder.setTitle("Write permission");
                 break;
             case REQUEST_CAMERA:
-                dialogBuilder.setTitle("Location permission");
+                dialogBuilder.setTitle("Camera permission");
                 break;
         }
 
@@ -380,7 +379,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         }
         try {
             FileOutputStream fos = new FileOutputStream(file);
-            bitmap.compress(Bitmap.CompressFormat.JPEG, 85, fos);
+            bitmap.compress(Bitmap.CompressFormat.JPEG, 100, fos);
             fos.close();
 
         } catch (Exception error) {
@@ -392,7 +391,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
     }
 
     public File createDirectory() {
-        File mediaStorageDir = new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DCIM), "Pictures");
+        File mediaStorageDir = new File(Environment.getExternalStorageDirectory(), "Pictures");
         if (!mediaStorageDir.exists()) {
             if (!mediaStorageDir.mkdirs()) {
                 Log.d("MyCameraApp", "failed to create directory");
@@ -411,7 +410,8 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
             LatLng latLng = new LatLng(location.getLatitude(), location.getLongitude());
             MarkerOptions markerOptions = new MarkerOptions();
             markerOptions.position(latLng);
-            markerOptions.title("Moja lokacija");
+            markerOptions.title("Ovdje sam");
+            markerOptions.snippet("Konačno znam gdje se nalazim!");
             marker = mGoogleMap.addMarker(markerOptions);
             if (ActivityCompat.checkSelfPermission(getApplicationContext(), Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
                 mGoogleMap.setMyLocationEnabled(true);
